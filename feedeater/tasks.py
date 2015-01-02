@@ -11,7 +11,7 @@ from lxml import etree
 from dateutil.parser import parse
 
 from worker import app, engine
-from .models import Session, Item, Rule, Source, create_all, drop_all
+from .models import Session, Item, Rule, Feed, Source, create_all, drop_all
 from .selector import Selector
 
 _http = urllib3.PoolManager()
@@ -36,8 +36,8 @@ def _extract_feed_item(node):
         # description=node.find('./description').text
     )
     if pub_date_elem is not None:
-        item.create_time = item.update_time = parse(pub_date_elem.text).replace(tzinfo=None)
-        item.last_crawl_time = datetime.now()
+        item.updated_at = parse(pub_date_elem.text).replace(tzinfo=None)
+        item.crawled_at = datetime.now()
 
     return item
 
@@ -60,8 +60,12 @@ def _extract_item_content(source_id, sel):
 
 def _item_updated(items):
     def predicate(item):
-        result = item.item_id not in items or item.update_time > items[item.item_id]
-        items[item.item_id] = item.update_time
+        if item.item_id not in items:
+            result = True
+        else:
+            result = item.updated_at > items[item.item_id]
+
+        items[item.item_id] = item.updated_at
         return result
     return predicate
 
@@ -78,8 +82,8 @@ def drop_db():
 
 @app.task(base=_DatabaseTask)
 def crawl(source_id, url, sel):
-    records = Session.query(Item.item_id, Item.update_time).filter(Item.source_id == source_id)
-    old_items = {item_id: update_time for item_id, update_time in records}
+    records = Session.query(Item.item_id, Item.updated_at).filter(Item.source_id == source_id)
+    old_items = {item_id: updated_at for item_id, updated_at in records}
 
     items = imap(_extract_item_content(source_id, sel),
                  ifilter(_item_updated(old_items), _extract_items(url)))
@@ -91,6 +95,7 @@ def crawl(source_id, url, sel):
 def crawl_all():
     sources = Session.query(Source).all()
     for source in sources:
-        crawl(source.id, source.feed_url, Selector(source.rules))
+        for feed in source.feeds:
+            crawl(source.id, feed.url, Selector(source.rules))
 
     return sources

@@ -47,9 +47,16 @@ class Item(_ModelMixin, _ModelBase):
     url = sa.Column(sa.String(256), nullable=False)
     title = sa.Column(sa.String(32), nullable=False)
     content = sa.Column(sa.Text, nullable=False)
-    create_time = sa.Column(sa.DateTime, nullable=False)
-    update_time = sa.Column(sa.DateTime, nullable=False)
-    last_crawl_time = sa.Column(sa.DateTime, nullable=False)
+    updated_at = sa.Column(sa.DateTime, nullable=False)
+    crawled_at = sa.Column(sa.DateTime, nullable=False)
+
+    source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
+
+
+class Feed(_ModelMixin, _ModelBase):
+
+    name = sa.Column(sa.String(32), nullable=False)
+    url = sa.Column(sa.String(256), nullable=False)
 
     source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
 
@@ -57,8 +64,9 @@ class Item(_ModelMixin, _ModelBase):
 class Source(_ModelMixin, _ModelBase):
 
     name = sa.Column(sa.String(32), nullable=False)
-    feed_url = sa.Column(sa.String(256), nullable=False)
+    url = sa.Column(sa.String(256), nullable=False)
 
+    feeds = relationship(Feed)
     items = relationship(Item)
     rules = relationship(Rule, cascade='all, delete-orphan',
                          order_by=Rule.position,
