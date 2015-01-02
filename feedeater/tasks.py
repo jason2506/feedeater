@@ -3,7 +3,7 @@
 from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
-from itertools import imap
+from itertools import imap, ifilter
 
 import celery
 import urllib3
@@ -36,7 +36,7 @@ def _extract_feed_item(node):
         # description=node.find('./description').text
     )
     if pub_date_elem is not None:
-        item.create_time = item.update_time = parse(pub_date_elem.text)
+        item.create_time = item.update_time = parse(pub_date_elem.text).replace(tzinfo=None)
         item.last_crawl_time = datetime.now()
 
     return item
@@ -58,6 +58,14 @@ def _extract_item_content(source_id, sel):
     return extract_content
 
 
+def _item_updated(items):
+    def predicate(item):
+        result = item.item_id not in items or item.update_time > items[item.item_id]
+        items[item.item_id] = item.update_time
+        return result
+    return predicate
+
+
 @app.task
 def init_db():
     create_all(engine)
@@ -70,7 +78,11 @@ def drop_db():
 
 @app.task(base=_DatabaseTask)
 def crawl(source_id, url, sel):
-    items = map(_extract_item_content(source_id, sel), _extract_items(url))
+    records = Session.query(Item.item_id, Item.update_time).filter(Item.source_id == source_id)
+    old_items = {item_id: update_time for item_id, update_time in records}
+
+    items = imap(_extract_item_content(source_id, sel),
+                 ifilter(_item_updated(old_items), _extract_items(url)))
     Session.add_all(items)
     Session.commit()
 
