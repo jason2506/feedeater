@@ -50,7 +50,7 @@ class Item(_ModelMixin, _ModelBase):
     updated_at = sa.Column(sa.DateTime, nullable=False)
     crawled_at = sa.Column(sa.DateTime, nullable=False)
 
-    source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
+    feed_id = sa.Column(sa.Integer, sa.ForeignKey('feed.id'), nullable=False)
 
 
 class Feed(_ModelMixin, _ModelBase):
@@ -60,6 +60,8 @@ class Feed(_ModelMixin, _ModelBase):
 
     source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
 
+    items = relationship(Item)
+
 
 class Source(_ModelMixin, _ModelBase):
 
@@ -67,7 +69,6 @@ class Source(_ModelMixin, _ModelBase):
     url = sa.Column(sa.String(256), nullable=False)
 
     feeds = relationship(Feed)
-    items = relationship(Item)
     rules = relationship(Rule, cascade='all, delete-orphan',
                          order_by=Rule.position,
                          collection_class=ordering_list('position'))

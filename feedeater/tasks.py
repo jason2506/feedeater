@@ -48,12 +48,12 @@ def _extract_items(url):
     return imap(_extract_feed_item, root.iter('item'))
 
 
-def _extract_item_content(source_id, sel):
+def _extract_item_content(feed_id, sel):
     def extract_content(item):
         response = _http.request('GET', item.url)
         root = etree.fromstring(response.data, etree.HTMLParser())
         item.content = '\n'.join(sel(root))
-        item.source_id = source_id
+        item.feed_id = feed_id
         return item
     return extract_content
 
@@ -81,11 +81,11 @@ def drop_db():
 
 
 @app.task(base=_DatabaseTask)
-def crawl(source_id, url, sel):
-    records = Session.query(Item.item_id, Item.updated_at).filter(Item.source_id == source_id)
+def crawl(feed_id, url, sel):
+    records = Session.query(Item.item_id, Item.updated_at).filter(Item.feed_id == feed_id)
     old_items = {item_id: updated_at for item_id, updated_at in records}
 
-    items = imap(_extract_item_content(source_id, sel),
+    items = imap(_extract_item_content(feed_id, sel),
                  ifilter(_item_updated(old_items), _extract_items(url)))
     Session.add_all(items)
     Session.commit()
@@ -95,7 +95,8 @@ def crawl(source_id, url, sel):
 def crawl_all():
     sources = Session.query(Source).all()
     for source in sources:
+        sel = Selector(source.rules)
         for feed in source.feeds:
-            crawl(source.id, feed.url, Selector(source.rules))
+            crawl(feed.id, feed.url, sel)
 
     return sources
