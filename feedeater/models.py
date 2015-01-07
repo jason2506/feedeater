@@ -3,7 +3,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import sqlalchemy as sa
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, remote, foreign
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.orderinglist import ordering_list
 
@@ -61,6 +61,10 @@ class Feed(_ModelMixin, _ModelBase):
     source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
 
     items = relationship(Item)
+    rules = relationship(Rule,
+                         primaryjoin=(remote(source_id) == foreign(Rule.source_id)),
+                         order_by=Rule.position,
+                         collection_class=ordering_list('position'))
 
 
 class Source(_ModelMixin, _ModelBase):

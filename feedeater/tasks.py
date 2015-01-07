@@ -3,7 +3,7 @@
 from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
-from itertools import imap, ifilter
+from itertools import imap, chain
 
 import celery
 import urllib3
@@ -48,26 +48,22 @@ def _extract_items(url):
     return imap(_extract_feed_item, root.iter('item'))
 
 
-def _extract_item_content(feed_id, sel):
-    def extract_content(item):
-        response = _http.request('GET', item.url)
-        root = etree.fromstring(response.data, etree.HTMLParser())
-        item.content = '\n'.join(sel(root))
-        item.feed_id = feed_id
-        return item
-    return extract_content
+def _extract_item_content(feed_id, sel, item):
+    response = _http.request('GET', item.url)
+    root = etree.fromstring(response.data, etree.HTMLParser())
+    item.content = '\n'.join(sel(root))
+    item.feed_id = feed_id
+    return item
 
 
-def _item_updated(items):
-    def predicate(item):
-        if item.item_id not in items:
-            result = True
-        else:
-            result = item.updated_at > items[item.item_id]
+def _is_item_updated(old_items, item):
+    if item.item_id not in old_items:
+        result = True
+    else:
+        result = item.updated_at > old_items[item.item_id]
 
-        items[item.item_id] = item.updated_at
-        return result
-    return predicate
+    old_items[item.item_id] = item.updated_at
+    return result
 
 
 @app.task
@@ -80,13 +76,31 @@ def drop_db():
     drop_all(engine)
 
 
-@app.task(base=_DatabaseTask)
-def crawl(feed_id, url, sel):
-    records = Session.query(Item.item_id, Item.updated_at).filter(Item.feed_id == feed_id)
-    old_items = {item_id: updated_at for item_id, updated_at in records}
+def _crawl(feed, sel):
+    old_items = {item.item_id: item.updated_at for item in feed.items}
+    return (_extract_item_content(feed.id, sel, item)
+            for item in _extract_items(feed.url)
+            if _is_item_updated(old_items, item))
 
-    items = imap(_extract_item_content(feed_id, sel),
-                 ifilter(_item_updated(old_items), _extract_items(url)))
+
+@app.task(base=_DatabaseTask)
+def crawl_from_feed(feed_id):
+    feed = Session.query(Feed).get(feed_id)
+    if feed is None:
+        return
+
+    sel = Selector(feed.rules)
+    items = _crawl(feed, sel)
+    Session.add_all(items)
+    Session.commit()
+
+
+@app.task(base=_DatabaseTask)
+def crawl_from_source(source_id):
+    feeds = Session.query(Feed).filter_by(source_id=source_id)
+    rules = Session.query(Rule).filter_by(source_id=source_id).order_by('position')
+    sel = Selector(rules)
+    items = chain.from_iterable(_crawl(feed, sel) for feed in feeds)
     Session.add_all(items)
     Session.commit()
 
@@ -96,7 +110,7 @@ def crawl_all():
     sources = Session.query(Source).all()
     for source in sources:
         sel = Selector(source.rules)
-        for feed in source.feeds:
-            crawl(feed.id, feed.url, sel)
+        items = chain.from_iterable(_crawl(feed, sel) for feed in source.feeds)
+        Session.add_all(items)
 
-    return sources
+    Session.commit()
