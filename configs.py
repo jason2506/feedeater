@@ -1,3 +1,6 @@
+# Flask
+DEBUG = True
+
 # Celery
 BROKER_URL = 'amqp://'
 CELERY_RESULT_BACKEND = 'amqp://'

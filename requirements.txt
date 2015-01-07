@@ -4,3 +4,4 @@ lxml
 cssselect
 python-dateutil
 sqlalchemy
+flask

@@ -1,0 +1,31 @@
+{% extends "_layout.html" %}
+{% from '_macros.html' import pagination %}
+{% set page_title = 'Items' %}
+{% block content %}
+<h1>Items</h1>
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Updated At</th>
+      <th>Crawled At</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td data-title="Title" class="title">
+        <a href="{{ item.url }}">{{ item.title }}</a>
+      </td>
+      <td data-title="Updated At" class="updated-at">
+        {{ item.updated_at | datetime }}
+      </td>
+      <td data-title="Crawled At" class="crawled-at">
+        {{ item.crawled_at | datetime }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{{ pagination() }}
+{% endblock %}

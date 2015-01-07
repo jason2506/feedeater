@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Chi-En Wu">
+    <title>{% if page_title %}{{ page_title }} - {% endif %}FeedEater Panel</title>
+    <link href="{{ url_for('.static', filename='css/screen.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    <nav class="breadcrumb">
+      <ul>
+        <li><a href="javascript:void(0)">FeedEater</a></li>
+        <li><a href="javascript:void(0)">蘋果日報</a></li>
+        <li><a href="javascript:void(0)">政治</a></li>
+      </ul>
+    </nav>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
