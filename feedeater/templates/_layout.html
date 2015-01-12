@@ -11,9 +11,10 @@
   <body>
     <nav class="breadcrumb">
       <ul>
-        <li><a href="javascript:void(0)">FeedEater</a></li>
-        <li><a href="javascript:void(0)">蘋果日報</a></li>
-        <li><a href="javascript:void(0)">政治</a></li>
+        <li><a href="{{ url_for('.show_sources') }}">FeedEater</a></li>
+        {%- for name, url in breadcrumb %}
+        <li><a href="{{ url }}">{{ name }}</a></li>
+        {%- endfor %}
       </ul>
     </nav>
     <main>
