@@ -1,5 +1,5 @@
 {% extends "_layout.html" %}
-{% from '_macros.html' import pagination %}
+{% from '_macros.html' import render_pagination %}
 {% set page_title = 'Sources' %}
 {% block content %}
 <h1>Sources</h1>
@@ -29,5 +29,5 @@
     {% endfor %}
   </tbody>
 </table>
-{{ pagination() }}
+{{ render_pagination(pagination) }}
 {% endblock %}

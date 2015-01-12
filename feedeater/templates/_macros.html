@@ -1,19 +1,27 @@
-{% macro pagination() %}
+{% macro render_pagination(pagination) %}
 <div class="pagination">
   <ul>
-    <li class="page-prev"><a href="javascript:void(0)" rel="prev">Prev</a></li>
+    {% if pagination.has_prev %}
+    <li class="page-prev"><a href="{{ url_for_page(pagination.page - 1) }}" rel="prev">Prev</a></li>
+    {% endif %}
     <li>
       <ul>
-        <li><a href="javascript:void(0)">1</a></li>
-        <li><a href="javascript:void(0)">2</a></li>
-        <li><a href="javascript:void(0)">3</a></li>
-        <li><a href="javascript:void(0)">4</a></li>
-        <li><a href="javascript:void(0)">5</a></li>
-        <li><a href="javascript:void(0)">6</a></li>
-        <li><a href="javascript:void(0)">7</a></li>
+      {%- for page in pagination.iter_pages() %}
+        {% if page %}
+          {% if page == pagination.page %}
+          <li><span class="current">{{ page }}</span></li>
+          {% else %}
+          <li><a href="{{ url_for_page(page) }}">{{ page }}</a></li>
+          {% endif %}
+        {% else %}
+        <span class=ellipsis>…</span>
+        {% endif %}
+      {%- endfor %}
       </ul>
     </li>
-    <li class="page-next"><a href="javascript:void(0)" rel="next">Next</a></li>
+    {% if pagination.has_next %}
+    <li class="page-next"><a href="{{ url_for_page(pagination.page + 1) }}" rel="next">Next</a></li>
+    {% endif %}
   </ul>
 </div>
 {% endmacro %}
