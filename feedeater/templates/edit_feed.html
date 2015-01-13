@@ -2,11 +2,12 @@
 {% set page_title = '' %}
 {% block content %}
 <h1>Edit Feed</h1>
-<form>
+<form method="POST">
   <label>Name</label>
-  <input type="text" placeholder="Name" value="{{ feed.name }}">
+  {{ form.name() }}
   <label>URL</label>
-  <input type="text" placeholder="http://" value="{{ feed.url }}">
+  {{ form.url() }}
+  {{ form.csrf_token }}
   <input type="submit" value="Submit">
   <input type="reset" value="Reset">
 </form>

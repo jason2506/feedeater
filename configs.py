@@ -1,5 +1,6 @@
 # Flask
 DEBUG = True
+SECRET_KEY = 'SECRET_KEY'
 
 # Celery
 BROKER_URL = 'amqp://'

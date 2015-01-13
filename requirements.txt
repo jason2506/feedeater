@@ -5,3 +5,5 @@ cssselect
 python-dateutil
 sqlalchemy
 flask
+flask-wtf
+wtforms-alchemy
