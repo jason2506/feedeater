@@ -45,9 +45,10 @@ def show_sources():
     return render_template('show_sources.html', sources=sources, pagination=pagination)
 
 
+@module.route('/sources/new', methods=('GET', 'POST'))
 @module.route('/sources/<int:source_id>/edit', methods=('GET', 'POST'))
-def edit_source(source_id):
-    source = Session.query(Source).get(source_id)
+def edit_source(source_id=None):
+    source = Source() if source_id is None else Session.query(Source).get(source_id)
     if source is None:
         abort(404)
 
@@ -84,9 +85,10 @@ def show_feeds(source_id):
     return render_template('show_feeds.html', feeds=feeds, pagination=pagination, breadcrumb=breadcrumb)
 
 
+@module.route('/sources/<int:source_id>/feeds/new', methods=('GET', 'POST'))
 @module.route('/sources/<int:source_id>/feeds/<int:feed_id>/edit', methods=('GET', 'POST'))
-def edit_feed(source_id, feed_id):
-    feed = Session.query(Feed).filter_by(id=feed_id, source_id=source_id).one()
+def edit_feed(source_id, feed_id=None):
+    feed = Feed(source_id=source_id) if feed_id is None else Session.query(Feed).filter_by(id=feed_id, source_id=source_id).one()
     if feed is None:
         abort(404)
 
