@@ -23,5 +23,6 @@
     <li class="page-next"><a href="{{ url_for_page(pagination.page + 1) }}" rel="next">Next</a></li>
     {% endif %}
   </ul>
+  <div>Showing {{ pagination.per_page * (pagination.page - 1) + 1 }} to {% if pagination.has_next %}{{ pagination.per_page * pagination.page }}{% else %}{{ pagination.total_count }}{% endif %} of {{ pagination.total_count }} entries</div>
 </div>
 {% endmacro %}
