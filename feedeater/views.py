@@ -31,6 +31,13 @@ def _jinja2_url_for_page(page):
     return url_for(request.endpoint, **args)
 
 
+@module.teardown_app_request
+def _shutdown_session(response_or_exc):
+    if response_or_exc is None:
+        Session.commit()
+    Session.remove()
+
+
 @module.route('/')
 def index():
     return redirect(url_for('.show_sources'))
@@ -56,7 +63,6 @@ def edit_source(source_id=None):
     if form.validate_on_submit():
         form.populate_obj(source)
         Session.add(source)
-        Session.commit()
         return redirect(url_for('.show_sources'))
 
     return render_template('edit_source.html', form=form)
@@ -96,7 +102,6 @@ def edit_feed(source_id, feed_id=None):
     if form.validate_on_submit():
         form.populate_obj(feed)
         Session.add(feed)
-        Session.commit()
         return redirect(url_for('.show_feeds', source_id=source_id))
 
     source_name = Session.query(Source.name).filter_by(id=source_id).scalar()
