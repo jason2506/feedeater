@@ -2,7 +2,10 @@
 {% from '_macros.html' import render_pagination %}
 {% set page_title = 'Feeds' %}
 {% block content %}
+<header>
 <h1>Feeds</h1>
+<a href="{{ url_for('.edit_feed', source_id=source_id) }}" class="action create">+</a>
+</header>
 <table>
   <thead>
     <tr>

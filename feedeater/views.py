@@ -64,7 +64,7 @@ def edit_source(source_id=None):
 
 @module.route('/sources/<int:source_id>/delete')
 def delete_source(source_id):
-    Session.query(Source).get(source_id).delete()
+    Session.query(Source).filter_by(id=source_id).delete()
     return redirect(url_for('.show_sources'))
 
 
@@ -82,7 +82,7 @@ def show_feeds(source_id):
     breadcrumb = (
         (source_name, url_for('.show_feeds', source_id=source_id)),
     )
-    return render_template('show_feeds.html', feeds=feeds, pagination=pagination, breadcrumb=breadcrumb)
+    return render_template('show_feeds.html', source_id=source_id, feeds=feeds, pagination=pagination, breadcrumb=breadcrumb)
 
 
 @module.route('/sources/<int:source_id>/feeds/new', methods=('GET', 'POST'))
