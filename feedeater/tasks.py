@@ -1,28 +1,16 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, unicode_literals
-
 from datetime import datetime
 from itertools import imap, chain
 
-import celery
 import urllib3
 from lxml import etree
 from dateutil.parser import parse
 
-from worker import app, engine
-from .models import Session, Item, Rule, Feed, Source, create_all, drop_all
+from .models import db, Item, Rule, Feed, Source
 from .selector import Selector
 
 _http = urllib3.PoolManager()
-
-
-class _DatabaseTask(celery.Task):
-
-    abstract = True
-
-    def after_return(self, *args, **kwargs):
-        Session.remove()
 
 
 def _extract_feed_item(node):
@@ -66,16 +54,6 @@ def _is_item_updated(old_items, item):
     return result
 
 
-@app.task
-def init_db():
-    create_all(engine)
-
-
-@app.task
-def drop_db():
-    drop_all(engine)
-
-
 def _crawl(feed, sel):
     old_items = {item.item_id: item.updated_at for item in feed.items}
     return (_extract_item_content(feed.id, sel, item)
@@ -83,34 +61,34 @@ def _crawl(feed, sel):
             if _is_item_updated(old_items, item))
 
 
-@app.task(base=_DatabaseTask)
 def crawl_from_feed(feed_id):
-    feed = Session.query(Feed).get(feed_id)
+    feed = Feed.get(feed_id)
     if feed is None:
         return
 
     sel = Selector(feed.rules)
     items = _crawl(feed, sel)
-    Session.add_all(items)
-    Session.commit()
+    db.session.add_all(items)
+    db.session.commit()
+    db.session.remove()
 
 
-@app.task(base=_DatabaseTask)
 def crawl_from_source(source_id):
-    feeds = Session.query(Feed).filter_by(source_id=source_id)
-    rules = Session.query(Rule).filter_by(source_id=source_id).order_by('position')
+    feeds = Feed.query.filter_by(source_id=source_id)
+    rules = Rule.query.filter_by(source_id=source_id).order_by('position')
     sel = Selector(rules)
     items = chain.from_iterable(_crawl(feed, sel) for feed in feeds)
-    Session.add_all(items)
-    Session.commit()
+    db.session.add_all(items)
+    db.session.commit()
+    db.session.remove()
 
 
-@app.task(base=_DatabaseTask)
 def crawl_all():
-    sources = Session.query(Source).all()
+    sources = Source.query.all()
     for source in sources:
         sel = Selector(source.rules)
         items = chain.from_iterable(_crawl(feed, sel) for feed in source.feeds)
-        Session.add_all(items)
+        db.session.add_all(items)
 
-    Session.commit()
+    db.session.commit()
+    db.session.remove()

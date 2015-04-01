@@ -1,9 +1,9 @@
-celery
+flask
+flask-script
+flask-wtf
+flask-sqlalchemy
+wtforms-alchemy
+python-dateutil
 urllib3
 lxml
 cssselect
-python-dateutil
-sqlalchemy
-flask
-flask-wtf
-wtforms-alchemy

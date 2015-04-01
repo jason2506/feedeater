@@ -1,0 +1,7 @@
+# Flask
+DEBUG = True
+SECRET_KEY = 'SECRET_KEY'
+
+# SQLAlchemy
+SQLALCHEMY_ECHO = DEBUG
+SQLALCHEMY_DATABASE_URI = 'sqlite:///tmp.db'

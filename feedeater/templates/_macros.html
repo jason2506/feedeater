@@ -2,7 +2,7 @@
 <div class="pagination">
   <ul>
     {% if pagination.has_prev %}
-    <li class="page-prev"><a href="{{ url_for_page(pagination.page - 1) }}" rel="prev">Prev</a></li>
+    <li class="page-prev"><a href="{{ url_for_page(pagination.prev_num) }}" rel="prev">Prev</a></li>
     {% endif %}
     <li>
       <ul>
@@ -20,9 +20,9 @@
       </ul>
     </li>
     {% if pagination.has_next %}
-    <li class="page-next"><a href="{{ url_for_page(pagination.page + 1) }}" rel="next">Next</a></li>
+    <li class="page-next"><a href="{{ url_for_page(pagination.next_num) }}" rel="next">Next</a></li>
     {% endif %}
   </ul>
-  <div>Showing {{ pagination.per_page * (pagination.page - 1) + 1 }} to {% if pagination.has_next %}{{ pagination.per_page * pagination.page }}{% else %}{{ pagination.total_count }}{% endif %} of {{ pagination.total_count }} entries</div>
+  <div>Showing {% if pagination.total %}{{ pagination.per_page * (pagination.page - 1) + 1 }}{% else %}0{% endif %} to {% if pagination.has_next %}{{ pagination.per_page * pagination.page }}{% else %}{{ pagination.total }}{% endif %} of {{ pagination.total }} entries</div>
 </div>
 {% endmacro %}

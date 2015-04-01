@@ -1,78 +1,96 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, unicode_literals
-
-import sqlalchemy as sa
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, remote, foreign
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from flask.ext.sqlalchemy import SQLAlchemy
 from sqlalchemy.ext.orderinglist import ordering_list
 
-Session = scoped_session(sessionmaker())
-_ModelBase = declarative_base()
+db = SQLAlchemy()
 
 
-def bind_engine(engine):
-    Session.configure(bind=engine)
+class _CRUDMixin(object):
+
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+
+    @classmethod
+    def get(cls, id):
+        if isinstance(id, (int, float)) or \
+           (isinstance(id, basestring) and id.isdigit()):
+            return cls.query.get(int(id))
+        return None
+
+    @classmethod
+    def create(cls, **kwargs):
+        instance = cls(**kwargs)
+        return instance.save()
+
+    def update(self, commit=True, **kwargs):
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
+        return commit and self.save() or self
+
+    def save(self, commit=True):
+        db.session.add(self)
+        if commit:
+            db.session.commit()
+        return self
+
+    def delete(self, commit=True):
+        db.session.delete(self)
+        return commit and db.session.commit()
 
 
-def create_all(engine):
-    _ModelBase.metadata.create_all(engine)
+class Rule(_CRUDMixin, db.Model):
+
+    __tablename__ = 'rule'
+
+    type = db.Column(db.Enum('XPATH', 'CSS'), nullable=False)
+    path = db.Column(db.String(32), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+
+    source_id = db.Column(db.Integer, db.ForeignKey('source.id'),
+                          nullable=False)
 
 
-def drop_all(engine):
-    _ModelBase.metadata.drop_all(engine)
+class Item(_CRUDMixin, db.Model):
+
+    __tablename__ = 'item'
+
+    item_id = db.Column(db.String(256), nullable=False)
+    url = db.Column(db.String(256), nullable=False)
+    title = db.Column(db.String(32), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False)
+    crawled_at = db.Column(db.DateTime, nullable=False)
+
+    feed_id = db.Column(db.Integer, db.ForeignKey('feed.id'), nullable=False)
 
 
-class _ModelMixin(object):
+class Feed(_CRUDMixin, db.Model):
 
-    @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
+    __tablename__ = 'feed'
 
-    id = sa.Column(sa.Integer, primary_key=True, nullable=False)
+    name = db.Column(db.String(32), nullable=False)
+    url = db.Column(db.String(256), nullable=False)
 
+    source_id = db.Column(db.Integer, db.ForeignKey('source.id'),
+                          nullable=False)
 
-class Rule(_ModelMixin, _ModelBase):
-
-    type = sa.Column(sa.Enum('XPATH', 'CSS'), nullable=False)
-    path = sa.Column(sa.String(32), nullable=False)
-    position = sa.Column(sa.Integer, nullable=False)
-
-    source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
-
-
-class Item(_ModelMixin, _ModelBase):
-
-    item_id = sa.Column(sa.String(256), nullable=False)
-    url = sa.Column(sa.String(256), nullable=False)
-    title = sa.Column(sa.String(32), nullable=False)
-    content = sa.Column(sa.Text, nullable=False)
-    updated_at = sa.Column(sa.DateTime, nullable=False)
-    crawled_at = sa.Column(sa.DateTime, nullable=False)
-
-    feed_id = sa.Column(sa.Integer, sa.ForeignKey('feed.id'), nullable=False)
+    items = db.relationship(Item)
+    rules = db.relationship(
+        Rule,
+        primaryjoin=(db.remote(source_id) == db.foreign(Rule.source_id)),
+        order_by=Rule.position,
+        collection_class=ordering_list('position'))
 
 
-class Feed(_ModelMixin, _ModelBase):
+class Source(_CRUDMixin, db.Model):
 
-    name = sa.Column(sa.String(32), nullable=False)
-    url = sa.Column(sa.String(256), nullable=False)
+    __tablename__ = 'source'
 
-    source_id = sa.Column(sa.Integer, sa.ForeignKey('source.id'), nullable=False)
+    name = db.Column(db.String(32), nullable=False)
+    url = db.Column(db.String(256), nullable=False)
 
-    items = relationship(Item)
-    rules = relationship(Rule,
-                         primaryjoin=(remote(source_id) == foreign(Rule.source_id)),
-                         order_by=Rule.position,
-                         collection_class=ordering_list('position'))
-
-
-class Source(_ModelMixin, _ModelBase):
-
-    name = sa.Column(sa.String(32), nullable=False)
-    url = sa.Column(sa.String(256), nullable=False)
-
-    feeds = relationship(Feed)
-    rules = relationship(Rule, cascade='all, delete-orphan',
-                         order_by=Rule.position,
-                         collection_class=ordering_list('position'))
+    feeds = db.relationship(Feed)
+    rules = db.relationship(
+        Rule, cascade='all, delete-orphan',
+        order_by=Rule.position,
+        collection_class=ordering_list('position'))
