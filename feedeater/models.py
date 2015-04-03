@@ -38,6 +38,20 @@ class _CRUDMixin(object):
         return commit and db.session.commit()
 
 
+class Schedule(_CRUDMixin, db.Model):
+
+    __tablename__ = 'schedule'
+
+    weeks = db.Column(db.Integer, nullable=False)
+    days = db.Column(db.Integer, nullable=False)
+    hours = db.Column(db.Integer, nullable=False)
+    minutes = db.Column(db.Integer, nullable=False)
+    seconds = db.Column(db.Integer, nullable=False)
+    last_triggered_at = db.Column(db.DateTime, nullable=False)
+
+    feed_id = db.Column(db.Integer, db.ForeignKey('feed.id'), nullable=False)
+
+
 class Rule(_CRUDMixin, db.Model):
 
     __tablename__ = 'rule'
@@ -58,8 +72,8 @@ class Item(_CRUDMixin, db.Model):
     url = db.Column(db.String(256), nullable=False)
     title = db.Column(db.String(32), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False)
-    crawled_at = db.Column(db.DateTime, nullable=False)
+    last_updated_at = db.Column(db.DateTime, nullable=False)
+    last_crawled_at = db.Column(db.DateTime, nullable=False)
 
     feed_id = db.Column(db.Integer, db.ForeignKey('feed.id'), nullable=False)
 
@@ -80,6 +94,9 @@ class Feed(_CRUDMixin, db.Model):
         primaryjoin=(db.remote(source_id) == db.foreign(Rule.source_id)),
         order_by=Rule.position,
         collection_class=ordering_list('position'))
+    schedule = db.relationship(
+        Schedule, uselist=False,
+        cascade='all, delete-orphan')
 
 
 class Source(_CRUDMixin, db.Model):
