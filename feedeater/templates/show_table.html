@@ -1,0 +1,11 @@
+{% extends "_layout.html" %}
+{% from '_macros.html' import render_datatable %}
+{% block content %}
+<header>
+<h1>{{ page_title }}</h1>
+{% if create_url %}
+<a href="{{ create_url }}" class="action action-create">+</a>
+{% endif %}
+</header>
+{{ render_datatable(pagination, fields) }}
+{% endblock %}

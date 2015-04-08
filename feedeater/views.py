@@ -4,20 +4,35 @@ from flask import Blueprint, url_for, request, abort, redirect, render_template
 
 from .models import db, Item, Feed, Source
 from .forms import FeedForm, SourceForm
+from .fields import (
+    create_endpoint_link_field,
+    create_link_field,
+    create_datetime_field)
 
 module = Blueprint('feedeater', __name__,
                    template_folder='templates',
                    static_folder='static')
 
-_PER_PAGE = 10
+_PER_PAGE = 20
 
+_SOURCE_FIELDS = (
+    ('Name', create_endpoint_link_field('name', '.show_feeds',
+                                        {'source_id': 'id'})),
+    ('URL', create_link_field('url')),
+)
 
-@module.app_template_filter('datetime')
-def _jinja2_filter_datetime(date, fmt=None):
-    if fmt is None:
-        fmt = '%Y-%m-%d %H:%M'
+_FEED_FIELDS = (
+    ('Name', create_endpoint_link_field('name', '.show_items',
+                                        {'feed_id': 'id',
+                                         'source_id': 'source_id'})),
+    ('URL', create_link_field('url')),
+)
 
-    return date.strftime(fmt)
+_ITEM_FIELDS = (
+    ('Title', create_link_field('title', 'url')),
+    ('Last Updated', create_datetime_field('last_updated_at')),
+    ('Last Crawled', create_datetime_field('last_crawled_at')),
+)
 
 
 @module.app_template_global('url_for_page')
@@ -57,7 +72,13 @@ def index():
 def show_sources():
     page = request.args.get('page', default=1, type=int)
     pagination = Source.query.paginate(page, _PER_PAGE)
-    return render_template('show_sources.html', pagination=pagination)
+    data = {
+        'page_title': 'Sources',
+        'create_url': url_for('.edit_source'),
+        'pagination': pagination,
+        'fields': _SOURCE_FIELDS,
+    }
+    return render_template('show_table.html', **data)
 
 
 @module.route('/sources/new', methods=('GET', 'POST'))
@@ -72,7 +93,11 @@ def edit_source(source_id=None):
         source.save()
         return redirect(url_for('.show_sources'))
 
-    return render_template('edit_source.html', form=form)
+    data = {
+        'page_title': 'Edit Source',
+        'form': form,
+    }
+    return render_template('edit_fields.html', **data)
 
 
 @module.route('/sources/<int:source_id>/delete')
@@ -87,13 +112,15 @@ def show_feeds(source_id):
     page = request.args.get('page', default=1, type=int)
     pagination = Feed.query.filter_by(source_id=source_id) \
         .paginate(page, _PER_PAGE)
-
     breadcrumb = (_source_endpoint(source_id),)
-    return render_template(
-        'show_feeds.html',
-        source_id=source_id,
-        pagination=pagination,
-        breadcrumb=breadcrumb)
+    data = {
+        'page_title': 'Feeds',
+        'create_url': url_for('.edit_feed', source_id=source_id),
+        'pagination': pagination,
+        'breadcrumb': breadcrumb,
+        'fields': _FEED_FIELDS,
+    }
+    return render_template('show_table.html', **data)
 
 
 @module.route('/sources/<int:source_id>/feeds/new', methods=('GET', 'POST'))
@@ -101,7 +128,9 @@ def show_feeds(source_id):
               methods=('GET', 'POST'))
 def edit_feed(source_id, feed_id=None):
     feed = Feed(source_id=source_id) if feed_id is None \
-        else Feed.query.filter_by(id=feed_id, source_id=source_id).first_or_404()
+        else Feed.query.filter_by(id=feed_id, source_id=source_id).one()
+    if feed is None:
+        abort(404)
 
     form = FeedForm(request.form, obj=feed)
     if form.validate_on_submit():
@@ -110,7 +139,12 @@ def edit_feed(source_id, feed_id=None):
         return redirect(url_for('.show_feeds', source_id=source_id))
 
     breadcrumb = (_source_endpoint(source_id),)
-    return render_template('edit_feed.html', form=form, breadcrumb=breadcrumb)
+    data = {
+        'page_title': 'Edit Feed',
+        'form': form,
+        'breadcrumb': breadcrumb,
+    }
+    return render_template('edit_fields.html', **data)
 
 
 @module.route('/sources/<int:source_id>/feeds/<int:feed_id>/delete')
@@ -123,13 +157,15 @@ def delete_feed(source_id, feed_id):
 @module.route('/sources/<int:source_id>/feeds/<int:feed_id>/items')
 def show_items(source_id, feed_id):
     page = request.args.get('page', default=1, type=int)
-    pagination = Item.query.filter_by(source_id=source_id, feed_id=feed_id) \
-        .order_by(Item.crawled_at.desc()) \
+    pagination = Item.query.filter_by(feed_id=feed_id) \
+        .order_by(Item.last_crawled_at.desc()) \
         .paginate(page, _PER_PAGE)
-
     breadcrumb = (_source_endpoint(source_id),
                   _feed_endpoint(feed_id, source_id))
-    return render_template(
-        'show_items.html',
-        pagination=pagination,
-        breadcrumb=breadcrumb)
+    data = {
+        'page_title': 'Items',
+        'pagination': pagination,
+        'breadcrumb': breadcrumb,
+        'fields': _ITEM_FIELDS,
+    }
+    return render_template('show_table.html', **data)
